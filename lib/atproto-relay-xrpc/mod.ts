@@ -62,7 +62,15 @@ export function createPdsSubscription(
         } else {
           return;
         }
-        const frame = raw as SubscribeReposFrame;
+
+        // Unwrap relay-proxy subscription event envelope. PDSes behind the
+        // fedproxy relay proxy send frames nested inside `message`:
+        //   { $type: "...subscribe#subscriptionEvent", subscriptionId, message: { $type: "...subscribeRepos#commit", seq, repo, ... } }
+        let frame = raw as SubscribeReposFrame & { message?: SubscribeReposFrame };
+        if (frame.$type?.includes("#subscriptionEvent") && frame.message && typeof (frame.message as unknown as Record<string, unknown>).seq === "number") {
+          frame = frame.message;
+        }
+
         if (!frame || typeof frame.seq !== "number" || typeof frame.repo !== "string") return;
         cursor = frame.seq;
         onEvent?.(frame);
