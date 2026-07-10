@@ -97,9 +97,16 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
     const hostStore = createDenoKvHostStore(kv);
     const existing = await hostStore.get(pdsHostname);
 
+    // Always re-subscribe on requestCrawl. A restarted PDS has a fresh firehose
+    // cursor; reusing the old subscription with the old cursor would miss new
+    // records (the old cursor may be beyond the new PDS's current seq). Close
+    // any existing subscription and start from scratch.
     if (existing && existing.state === "active") {
-      await hostStore.upsert(pdsHostname, { did: existing.did, lastSeen: Date.now() });
-      return c.json({});
+      if (activeSubscriptions.has(pdsHostname)) {
+        activeSubscriptions.get(pdsHostname)!.close();
+        activeSubscriptions.delete(pdsHostname);
+      }
+      // Fall through to create a fresh subscription.
     }
 
     let did: string;
