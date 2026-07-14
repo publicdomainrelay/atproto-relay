@@ -192,6 +192,7 @@
           "jsr:@publicdomainrelay/logger@0"
         ]
       },
+      "jsr:@publicdomainrelay/tls-localhost@0.0.0": {},
       "jsr:@publicdomainrelay/ws-reconnect@0.0.0": {
         "dependencies": [
           "jsr:@publicdomainrelay/logger@0"
