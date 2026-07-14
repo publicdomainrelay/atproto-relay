@@ -26,6 +26,9 @@ export interface RelayFactoryOptions {
   kv?: Deno.Kv;
   log?: LoggerInterface;
   sequencer?: RelaySequencer;
+  /** Use plain HTTP/WS instead of HTTPS/WSS for all PDS connections.
+   *  For local dev/testing only. */
+  insecureHTTP?: boolean;
 }
 
 export interface RelayFactory {
@@ -111,7 +114,7 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
 
     let did: string;
     try {
-      const identity = await resolvePdsIdentity(pdsHostname);
+      const identity = await resolvePdsIdentity(pdsHostname, { insecureHTTP: opts.insecureHTTP });
       did = identity.did;
     } catch (err) {
       log.warn("resolve_pds_failed", { hostname: pdsHostname, err: String(err) });
@@ -127,6 +130,7 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
 
     const sub = createPdsSubscription(pdsHostname, existing?.cursor ?? undefined, {
       log,
+      insecureHTTP: opts.insecureHTTP,
       onEvent: (frame) => {
         hostStore.upsert(pdsHostname, { did, cursor: frame.seq, lastSeen: Date.now(), state: "active" }).catch(() => {});
         accountStore.upsert(frame.repo, { hostHostname: pdsHostname, rev: frame.rev }).catch(() => {});

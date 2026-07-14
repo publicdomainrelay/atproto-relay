@@ -24,7 +24,7 @@ export function createRelaySequencer(maxBacklog?: number): RelaySequencer {
 export function createPdsSubscription(
   hostname: string,
   cursor?: number,
-  opts?: { onEvent?: (frame: SubscribeReposFrame) => void; log?: LoggerInterface },
+  opts?: { onEvent?: (frame: SubscribeReposFrame) => void; log?: LoggerInterface; insecureHTTP?: boolean },
 ): PdsSubscriber {
   const log = opts?.log;
   const onEvent = opts?.onEvent;
@@ -36,7 +36,8 @@ export function createPdsSubscription(
   function connect() {
     if (closed) return;
     const cursorParam = cursor !== undefined && cursor !== null ? `?cursor=${cursor}` : "";
-    const url = `wss://${hostname}/xrpc/com.atproto.sync.subscribeRepos${cursorParam}`;
+    const scheme = opts?.insecureHTTP ? "ws" : "wss";
+    const url = `${scheme}://${hostname}/xrpc/com.atproto.sync.subscribeRepos${cursorParam}`;
     log?.info("pds_connecting", { hostname, cursor });
 
     try {
@@ -164,11 +165,12 @@ export function createDenoKvAccountStore(kv: Deno.Kv): AccountStore {
   };
 }
 
-export async function resolvePdsIdentity(hostname: string): Promise<{ did: string }> {
+export async function resolvePdsIdentity(hostname: string, opts?: { insecureHTTP?: boolean }): Promise<{ did: string }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
+  const scheme = opts?.insecureHTTP ? "http" : "https";
   try {
-    const res = await fetch(`https://${hostname}/xrpc/com.atproto.server.describeServer`, {
+    const res = await fetch(`${scheme}://${hostname}/xrpc/com.atproto.server.describeServer`, {
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`describeServer returned ${res.status}`);
