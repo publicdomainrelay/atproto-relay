@@ -162,11 +162,18 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
         onOpen(_evt, ws) {
           (async () => {
             try {
+              // Subscribe to live events FIRST so no frames escape during backfill.
+              const liveIter = sequencer.live();
+              let lastSeq = since ?? 0;
               for await (const frame of sequencer.backfill(since)) {
+                lastSeq = frame.seq;
                 ws.send(JSON.stringify(frame));
               }
-              for await (const frame of sequencer.live()) {
-                ws.send(JSON.stringify(frame));
+              // Stream live, skipping frames already emitted during backfill.
+              for await (const frame of liveIter) {
+                if (frame.seq > lastSeq) {
+                  ws.send(JSON.stringify(frame));
+                }
               }
             } catch {
             }
