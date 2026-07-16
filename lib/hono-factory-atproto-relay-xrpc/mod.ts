@@ -11,6 +11,7 @@ import type {
   AccountStore,
   RelaySequencer,
   CollectionIndex,
+  PdsSubscriber,
 } from "@publicdomainrelay/atproto-relay-abc";
 import {
   createRelaySequencer,
@@ -35,7 +36,7 @@ export interface RelayFactory {
   app: Hono;
 }
 
-const activeSubscriptions = new Map<string, { close(): void }>();
+const activeSubscriptions = new Map<string, PdsSubscriber>();
 
 export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
   const log = opts.log ?? createLogger("atproto-relay");
@@ -100,16 +101,20 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
     const hostStore = createDenoKvHostStore(kv);
     const existing = await hostStore.get(pdsHostname);
 
-    // Always re-subscribe on requestCrawl. A restarted PDS has a fresh firehose
-    // cursor; reusing the old subscription with the old cursor would miss new
-    // records (the old cursor may be beyond the new PDS's current seq). Close
-    // any existing subscription and start from scratch.
-    if (existing && existing.state === "active") {
-      if (activeSubscriptions.has(pdsHostname)) {
-        activeSubscriptions.get(pdsHostname)!.close();
-        activeSubscriptions.delete(pdsHostname);
-      }
-      // Fall through to create a fresh subscription.
+    // Re-subscribe on requestCrawl only when the existing stream is not healthy.
+    // A restarted PDS has a fresh firehose cursor, and reusing the old cursor
+    // would miss new records — but its socket is also closed, so `connected` is
+    // false and we still reset. Tearing down a *live* socket for a redundant
+    // registration (a PDS re-announcing itself) drops every commit streamed in
+    // the reconnect gap, which silently loses records mid-flow.
+    const live = activeSubscriptions.get(pdsHostname);
+    if (existing && existing.state === "active" && live?.connected) {
+      log.info("crawl_already_active", { hostname: pdsHostname });
+      return c.json({});
+    }
+    if (live) {
+      live.close();
+      activeSubscriptions.delete(pdsHostname);
     }
 
     let did: string;

@@ -34,6 +34,12 @@ export interface AccountStore {
 
 export interface PdsSubscriber {
   close(): void;
+  /**
+   * True while the firehose socket to the PDS is open. Lets a redundant
+   * requestCrawl be answered without tearing down a healthy stream, while a
+   * restarted PDS (socket closed) still forces a fresh subscription.
+   */
+  readonly connected: boolean;
 }
 
 export interface RelaySequencer {

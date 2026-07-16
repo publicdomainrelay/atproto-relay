@@ -107,7 +107,12 @@ export function createPdsSubscription(
   }
 
   connect();
-  return { close };
+  return {
+    close,
+    get connected() {
+      return !closed && ws !== null && ws.readyState === WebSocket.OPEN;
+    },
+  };
 }
 
 export function createDenoKvHostStore(kv: Deno.Kv): HostStore {
