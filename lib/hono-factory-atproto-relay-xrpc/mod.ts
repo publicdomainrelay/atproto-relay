@@ -99,19 +99,15 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
 
     const kv = await getKv();
     const hostStore = createDenoKvHostStore(kv);
-    const existing = await hostStore.get(pdsHostname);
 
-    // Re-subscribe on requestCrawl only when the existing stream is not healthy.
-    // A restarted PDS has a fresh firehose cursor, and reusing the old cursor
-    // would miss new records — but its socket is also closed, so `connected` is
-    // false and we still reset. Tearing down a *live* socket for a redundant
-    // registration (a PDS re-announcing itself) drops every commit streamed in
-    // the reconnect gap, which silently loses records mid-flow.
+    // requestCrawl is a re-subscribe-from-scratch signal: always tear down any
+    // live stream and re-crawl (full replay below). Records committed between
+    // the previous crawl and now — e.g. a bidder's offering written moments
+    // after its boot-time announce — are backfilled instead of lost in the
+    // live-stream gap. Tearing down a healthy stream for a redundant re-announce
+    // is safe because the re-crawl replays from seq 0, so no gap commits are
+    // dropped.
     const live = activeSubscriptions.get(pdsHostname);
-    if (existing && existing.state === "active" && live?.connected) {
-      log.info("crawl_already_active", { hostname: pdsHostname });
-      return c.json({});
-    }
     if (live) {
       live.close();
       activeSubscriptions.delete(pdsHostname);
@@ -133,7 +129,7 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
       activeSubscriptions.get(pdsHostname)!.close();
     }
 
-    const sub = createPdsSubscription(pdsHostname, existing?.cursor ?? undefined, {
+    const sub = createPdsSubscription(pdsHostname, undefined, {
       log,
       insecureHTTP: opts.insecureHTTP,
       onEvent: (frame) => {
