@@ -1,5 +1,6 @@
 {
   "nodeModulesDir": "auto",
+  "unstable": ["kv"],
   "workspace": [
     "./lib/common/atproto-relay-common",
     "./lib/abc/atproto-relay",
