@@ -176,7 +176,16 @@ export function createRelayFactory(opts: RelayFactoryOptions): RelayFactory {
                   ws.send(JSON.stringify(frame));
                 }
               }
-            } catch {
+            } catch (err) {
+              // A subscriber that sees nothing has no way to tell a quiet
+              // relay from a broken one, and neither does an operator: this
+              // used to swallow the reason silently.
+              log.error("subscribe_repos_failed", {
+                error: err instanceof Error ? err.message : String(err),
+              });
+              try {
+                ws.close(1011, "internal error");
+              } catch { /* already closing */ }
             }
           })();
         },

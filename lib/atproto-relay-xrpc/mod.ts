@@ -42,6 +42,12 @@ export function createPdsSubscription(
 
     try {
       ws = new WebSocket(url);
+      // Deno hands binary frames to onmessage as a Blob by default, and the
+      // handler below understands only ArrayBuffer and string, so without this
+      // every commit a PDS sends is discarded by its final `else return`. The
+      // socket still connects and still logs pds_connected, which is what makes
+      // it look like a quiet PDS rather than a broken subscriber.
+      ws.binaryType = "arraybuffer";
     } catch (err) {
       log?.error("pds_ws_constructor_failed", { hostname, err: String(err) });
       scheduleReconnect();
