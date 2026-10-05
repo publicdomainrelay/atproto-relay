@@ -186,6 +186,7 @@
       "jsr:@publicdomainrelay/hostname-helpers@0.1.0": {},
       "jsr:@publicdomainrelay/http-error@0.1.0": {},
       "jsr:@publicdomainrelay/logger@0.2.0": {},
+      "jsr:@publicdomainrelay/oauth-scope@0.0.0": {},
       "jsr:@publicdomainrelay/serve@0.0.0": {
         "dependencies": [
           "jsr:@hono/hono@4",

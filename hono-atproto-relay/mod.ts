@@ -4,6 +4,12 @@ import { createServe } from "@publicdomainrelay/serve";
 import { createRelayFactory } from "@publicdomainrelay/hono-factory-atproto-relay-xrpc";
 import cliArgsEnv from "./cli-args-env.json" with { type: "json" };
 
+// TLS is opt-in: with either file missing the server stays plain HTTP.
+async function tlsFromFiles(certFile: unknown, keyFile: unknown): Promise<{ cert?: string; key?: string }> {
+  if (typeof certFile !== "string" || typeof keyFile !== "string" || !certFile || !keyFile) return {};
+  return { cert: await Deno.readTextFile(certFile), key: await Deno.readTextFile(keyFile) };
+}
+
 if (import.meta.main) {
   let runtimeConfig = null;
   try {
@@ -59,7 +65,7 @@ if (import.meta.main) {
   const hostname = (options.hostname as string) || "127.0.0.1";
   const serve = createServe({
     logger,
-    tcp: { addr: hostname, port },
+    tcp: { addr: hostname, port, ...(await tlsFromFiles(options.tlsCertFile, options.tlsKeyFile)) },
   });
   serve.app.route("/", factory.app as never);
 
