@@ -69,6 +69,7 @@ if (import.meta.main) {
       keyFile: options.tlsKeyFile as string | undefined,
     },
     portFile: options.portFile as string | undefined,
+    listenersFile: options.listenersFile as string | undefined,
   });
   serve.app.route("/", factory.app as never);
 
