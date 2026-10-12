@@ -53,7 +53,10 @@ if (import.meta.main) {
   }
 
   const logger = createLogger({ serviceName: "hono-atproto-relay" });
-  const factory = createRelayFactory({ hostname: options.hostname as string, log: logger });
+  const kvPath = options.kvPath as string | undefined;
+  if (kvPath) await Deno.mkdir(kvPath.slice(0, kvPath.lastIndexOf("/")) || ".", { recursive: true });
+  const kv = kvPath ? await Deno.openKv(kvPath) : undefined;
+  const factory = createRelayFactory({ hostname: options.hostname as string, log: logger, kv });
 
   const port = options.port as number;
   const hostname = (options.hostname as string) || "127.0.0.1";

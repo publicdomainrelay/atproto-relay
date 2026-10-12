@@ -28,6 +28,11 @@
       "description": "PEM private key to serve TLS with; requires tls-cert-file",
       "env": "TLS_KEY_FILE"
     },
+    "kv-path": {
+      "type": "string",
+      "description": "Deno KV store path; unset keeps Deno's default location under DENO_DIR",
+      "env": "RELAY_KV_PATH"
+    },
     "port-file": {
       "type": "string",
       "description": "File the bound TCP port is written to once listening (used with port 0)",
